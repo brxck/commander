@@ -1,27 +1,66 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import * as net from "net";
+import * as fs from "fs";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+let server: net.Server;
+const SOCKETFILE = "/tmp/vscode_commander.sock";
+const connections: { [index: string]: net.Socket } = {};
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "shoutcast" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World!');
-	});
-
-	context.subscriptions.push(disposable);
+function onConnect(socket: net.Socket) {
+  // Track all connections
+  const id = Date.now();
+  connections[id] = socket;
+  socket
+    .on("end", function () {
+      delete connections[id];
+    })
+    .on("data", onData);
 }
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
+function onData(msg: Buffer) {
+  const message = String(msg);
+  if (message === "__exit__") {
+    // Server exited; passing of the torch
+    activate();
+  } else if (vscode.window.state.focused) {
+    vscode.commands.executeCommand(String(message));
+  } else if (server.listening) {
+    // Server re-emits unused command to all clients
+    emit(message);
+  }
+}
+
+function resetOrConnect(e: NodeJS.ErrnoException) {
+  if (e.code == "EADDRINUSE") {
+    const clientSocket = new net.Socket();
+    clientSocket.on("error", function (e: NodeJS.ErrnoException) {
+      if (e.code == "ECONNREFUSED") {
+        // No other server listening; reset socket and serve
+        fs.unlinkSync(SOCKETFILE);
+        server.on("connection", onConnect);
+      }
+    });
+    // Server exists, become client
+    clientSocket.on("data", onData);
+    clientSocket.connect({ path: SOCKETFILE });
+  }
+}
+
+function emit(message: Buffer | string) {
+  Object.values(connections).forEach((connection) => {
+    connection.write(message);
+  });
+}
+
+export function activate() {
+  server = net
+    .createServer()
+    .on("connection", onConnect)
+    .on("error", resetOrConnect);
+  server.listen(SOCKETFILE);
+}
+
+export function deactivate() {
+  emit("__exit__");
+  server.close();
+}
