@@ -1,11 +1,11 @@
 {
-  "name": "unix-socket",
-  "displayName": "Unix Socket",
+  "name": "commander",
+  "displayName": "Commander",
   "publisher": "brxck",
-  "description": "Run arbitrary commands from a Unix domain socket.",
-  "repository": "https://github.com/brxck/vscode-unix-socket",
+  "description": "Run arbitrary commands via a Unix domain socket.",
+  "repository": "https://github.com/brxck/commander",
   "icon": "icon.png",
-  "version": "0.0.3",
+  "version": "0.0.1",
   "engines": {
     "vscode": "^1.40.0"
   },
@@ -27,12 +27,12 @@
   "devDependencies": {
     "@types/glob": "^7.1.1",
     "@types/mocha": "^5.2.7",
-    "@types/node": "^12.11.7",
+    "@types/node": "^12.20.10",
     "@types/vscode": "^1.40.0",
     "glob": "^7.1.5",
     "mocha": "^6.2.2",
-    "typescript": "^3.6.4",
     "tslint": "^5.20.0",
+    "typescript": "^3.6.4",
     "vscode-test": "^1.2.2"
   }
 }
